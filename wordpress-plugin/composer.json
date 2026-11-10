@@ -1,0 +1,18 @@
+{
+  "name": "azra212/wp-mobile-client-plugin",
+  "description": "Coding standards tooling for the WP Mobile Client plugin. The plugin has no runtime Composer dependency.",
+  "license": "GPL-2.0-or-later",
+  "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "wp-coding-standards/wpcs": "^3.1"
+  },
+  "scripts": {
+    "phpcs": "phpcs",
+    "phpcbf": "phpcbf"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  }
+}
