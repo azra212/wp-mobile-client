@@ -1,29 +1,16 @@
-import { deleteToken, getToken } from "./token";
+import { createApiClient } from "./api-client";
+import { tokenStore } from "./token";
 
-const API_BASE = "https://balkangamehub.com/wp-json";
+const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://balkangamehub.com/wp-json";
 
-export class AuthError extends Error {
-  constructor(message = "Unauthorized") {
-    super(message);
-    this.name = "AuthError";
-  }
+export const api = createApiClient({
+  baseUrl: API_BASE,
+  store: tokenStore,
+});
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  api.setUnauthorizedHandler(handler);
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const token = await getToken();
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
-
-  if (res.status === 401) {
-    await deleteToken();
-    throw new AuthError("Session expired");
-  }
-
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}`);
-  }
-
-  return res.json();
-}
+export { ApiError, AuthError, errorMessage } from "./api-client";
+export type { User } from "./api-client";

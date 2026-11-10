@@ -1,4 +1,4 @@
-import { apiGet } from "./api";
+import { ApiError, api } from "./api";
 
 export type Post = {
   id: number;
@@ -19,13 +19,18 @@ export type Post = {
   };
 };
 
-export function fetchPosts() {
-  return apiGet<Post[]>("/wp/v2/posts?_embed");
-}
-export function fetchPost(id: number) {
-  return apiGet<Post>(`/wp/v2/posts/${id}?_embed`);
+export async function fetchPosts(): Promise<Post[]> {
+  const posts = await api.request<unknown>("/wp/v2/posts?_embed");
+  if (!Array.isArray(posts)) {
+    throw new ApiError("Invalid posts response", 200, "invalid_response");
+  }
+  return posts as Post[];
 }
 
-export function stripHtml(html: string) {
-  return html.replace(/<[^>]+>/g, "").trim();
+export function fetchPost(id: number): Promise<Post> {
+  return api.request<Post>(`/wp/v2/posts/${id}?_embed`);
+}
+
+export function featuredImage(post: Post): string | undefined {
+  return post._embedded?.["wp:featuredmedia"]?.[0]?.source_url;
 }

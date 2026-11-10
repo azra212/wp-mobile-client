@@ -1,144 +1,108 @@
+import { LoadingState, MessageState } from "@/components/screen-state";
+import { errorMessage } from "@/lib/api";
+import { featuredImage, fetchPost, type Post } from "@/lib/posts";
+import { theme } from "@/lib/theme";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  ImageStyle,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextStyle,
-  useWindowDimensions,
-  View,
-  ViewStyle,
-} from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { RenderHTML } from "react-native-render-html";
-
-import { fetchPost, Post } from "@/lib/posts";
-import { COLORS, PADDING } from "@/lib/theme";
-
-const styles = StyleSheet.create<{
-  centerContainer: ViewStyle;
-  contentContainer: ViewStyle;
-  scrollContent: ViewStyle;
-  featuredImage: ImageStyle;
-  title: TextStyle;
-  errorHeading: TextStyle;
-  errorMessage: TextStyle;
-}>({
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: PADDING,
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: PADDING,
-    paddingTop: 10,
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  featuredImage: {
-    width: "100%",
-    height: 240,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 16,
-    color: COLORS.primary,
-  },
-  errorHeading: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.primary,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  errorMessage: {
-    fontSize: 14,
-    color: COLORS.secondary,
-    textAlign: "center",
-    lineHeight: 20,
-  },
-});
 
 export default function PostDetail() {
   const contentWidth = useWindowDimensions().width;
-
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const numericId = Number(id);
+  const idIsValid = Number.isInteger(numericId) && numericId > 0;
 
   const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(idIsValid);
+  const [error, setError] = useState<string | null>(idIsValid ? null : "This post link is invalid.");
+
+  const load = useCallback(() => {
+    if (!idIsValid) {
+      setLoading(false);
+      setError("This post link is invalid.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    fetchPost(numericId)
+      .then((next) => {
+        setPost(next);
+      })
+      .catch((caught: unknown) => {
+        setPost(null);
+        setError(errorMessage(caught, "Couldn't load this post."));
+      })
+      .finally(() => setLoading(false));
+  }, [idIsValid, numericId]);
 
   useEffect(() => {
-    if (!id) return;
-
-    fetchPost(Number(id))
-      .then(setPost)
-      .catch(() => setError("Failed to load post"))
-      .finally(() => setLoading(false));
-  }, [id]);
+    load();
+  }, [load]);
 
   if (loading) {
-    return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
+    return <LoadingState />;
   }
 
   if (error || !post) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorHeading}>
-          {error ? "Failed to Load Post" : "Post Not Found"}
-        </Text>
-        <Text style={styles.errorMessage}>
-          {error ?? "The post you're looking for couldn't be found."}
-        </Text>
-      </View>
+      <MessageState
+        title={error ? "Couldn't load this post" : "Post not found"}
+        body={error ?? "The post is no longer available."}
+        actionLabel={idIsValid ? "Try again" : undefined}
+        onAction={idIsValid ? load : undefined}
+      />
     );
   }
 
+  const image = featuredImage(post);
+
   return (
-    <View style={styles.contentContainer}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {post._embedded?.["wp:featuredmedia"]?.[0]?.source_url && (
-          <Image
-            source={{
-              uri: post._embedded["wp:featuredmedia"][0].source_url,
-            }}
-            style={styles.featuredImage}
-            resizeMode="cover"
-          />
-        )}
-
+    <View style={styles.screen}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {image ? <Image source={{ uri: image }} style={styles.image} resizeMode="cover" /> : null}
         <Text style={styles.title}>{post.title.rendered}</Text>
-
         <RenderHTML
-          contentWidth={contentWidth - PADDING * 2}
+          contentWidth={contentWidth - theme.space.md * 2}
           source={{ html: post.content.rendered }}
           ignoredDomTags={["iframe"]}
           tagsStyles={{
             p: {
-              fontSize: 16,
+              fontSize: theme.font.body,
               lineHeight: 24,
-              marginBottom: 12,
-              color: COLORS.secondary,
+              marginBottom: theme.space.sm,
+              color: theme.color.muted,
             },
-            img: { marginVertical: 16 },
+            img: { marginVertical: theme.space.md },
           }}
         />
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.color.background,
+  },
+  content: {
+    paddingHorizontal: theme.space.md,
+    paddingTop: theme.space.sm,
+    paddingBottom: theme.space.lg,
+  },
+  image: {
+    width: "100%",
+    height: 220,
+    borderRadius: theme.radius,
+    marginBottom: theme.space.md,
+    backgroundColor: theme.color.border,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: theme.space.md,
+    color: theme.color.text,
+  },
+});

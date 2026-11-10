@@ -1,9 +1,20 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.color.text,
+        tabBarInactiveTintColor: theme.color.muted,
+        tabBarStyle: {
+          backgroundColor: theme.color.surface,
+          borderTopColor: theme.color.border,
+        },
+      }}
+    >
       <Tabs.Screen
         name="home"
         options={{
@@ -27,11 +38,7 @@ export default function TabsLayout() {
         options={{
           title: "About",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons
-              name="information-circle-outline"
-              color={color}
-              size={size}
-            />
+            <Ionicons name="information-circle-outline" color={color} size={size} />
           ),
         }}
       />

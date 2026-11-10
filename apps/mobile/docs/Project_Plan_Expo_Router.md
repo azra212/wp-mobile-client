@@ -1,5 +1,7 @@
 # React Native + WordPress Mobile App – Project Plan
 
+The Expo app now lives in `apps/mobile`, and the plugin lives in `wordpress-plugin/` at the repository root. Paths below were written before that move.
+
 Target website: **balkangamehub.com**  
 Approach: **Custom WordPress Plugin as a Mobile API Layer**
 

@@ -1,17 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiGet } from "./api";
-import { deleteToken, getToken } from "./token";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { api, errorMessage, setUnauthorizedHandler, type User } from "./api";
 
-type User = {
-  id: number;
-  username: string;
-  email: string;
-  roles: string[];
-};
-
-type LoginResult =
-  | { success: true; user: User }
-  | { success: false; message: string };
+type LoginResult = { success: true; user: User } | { success: false; message: string };
 
 type AuthState = {
   user: User | null;
@@ -21,98 +11,68 @@ type AuthState = {
   refreshMe: () => Promise<void>;
 };
 
-const AuthContext = createContext<AuthState | undefined>(undefined);
+const AuthContext = createContext<AuthState | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    refreshMe().finally(() => setLoading(false));
-
-    const interval = setInterval(() => {
-      refreshMe().catch(() => {});
-    }, 600000);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function refreshMe() {
-    const token = await getToken();
-    if (!token) {
+  const refreshMe = useCallback(async () => {
+    const signedIn = await api.hasSession();
+    if (!signedIn) {
       setUser(null);
       return;
     }
 
     try {
-      const me = await apiGet<User>("/bgh/v1/me");
-      setUser(me);
-    } catch {
-      await deleteToken();
+      setUser(await api.me());
+    } catch (error) {
       setUser(null);
-      throw new Error("Session expired");
+      throw error;
     }
-  }
-  async function login(
-    username: string,
-    password: string,
-  ): Promise<LoginResult> {
-    // keep your existing endpoint contract
-    const res = await fetch("https://balkangamehub.com/wp-json/bgh/v1/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null);
     });
 
-    if (!res.ok) {
-      return { success: false, message: `Login failed (${res.status})` };
-    }
+    refreshMe()
+      .catch(() => {
+        // A failed restore leaves the user on the login screen.
+      })
+      .finally(() => setLoading(false));
 
-    const data = await res.json();
+    return () => setUnauthorizedHandler(null);
+  }, [refreshMe]);
 
-    if (!data?.success || !data?.token) {
-      return {
-        success: false,
-        message: data?.message ?? "Invalid login response",
-      };
-    }
-
-    // Save token
-    const { saveToken } = await import("./token");
-    await saveToken(data.token);
-
-    // Immediately set user (use response if present, otherwise fetch /me)
-    if (data.user?.id) {
-      setUser(data.user);
-      return { success: true, user: data.user as User };
-    }
-
+  const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     try {
-      await refreshMe();
-      const me = await apiGet<User>("/bgh/v1/me");
-      return { success: true, user: me };
-    } catch {
-      return {
-        success: false,
-        message: "Logged in, but failed to load profile",
-      };
+      const next = await api.login(username, password);
+      setUser(next);
+      return { success: true, user: next };
+    } catch (error) {
+      return { success: false, message: errorMessage(error, "Login failed") };
     }
-  }
+  }, []);
 
-  async function logout() {
-    await deleteToken();
+  const logout = useCallback(async () => {
+    await api.logout();
     setUser(null);
-  }
+  }, []);
 
   const value = useMemo(
     () => ({ user, loading, login, logout, refreshMe }),
-    [user, loading],
+    [user, loading, login, logout, refreshMe],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+export function useAuth(): AuthState {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
 }

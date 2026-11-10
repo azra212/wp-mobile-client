@@ -1,10 +1,11 @@
-import { apiGet } from "./api";
+import { api } from "./api";
 
 export type HealthResponse = {
   status: string;
-  time: string;
+  timestamp: string;
+  version: string;
 };
 
-export function checkHealth() {
-  return apiGet<HealthResponse>("/bgh/v1/health");
+export function checkHealth(): Promise<HealthResponse> {
+  return api.request<HealthResponse>("/bgh/v1/health", { auth: false });
 }

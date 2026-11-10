@@ -1,15 +1,30 @@
 import * as SecureStore from "expo-secure-store";
+import type { TokenStore } from "./api-client";
 
-const TOKEN_KEY = "bgh_jwt";
+const ACCESS_KEY = "bgh_jwt";
+const REFRESH_KEY = "bgh_jwt_refresh";
 
-export async function saveToken(token: string) {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+async function remove(key: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(key);
+  } catch {
+    // deleteItemAsync rejects when the key is already gone.
+  }
 }
 
-export async function getToken() {
-  return SecureStore.getItemAsync(TOKEN_KEY);
-}
-
-export async function deleteToken() {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-}
+export const tokenStore: TokenStore = {
+  getAccessToken() {
+    return SecureStore.getItemAsync(ACCESS_KEY);
+  },
+  getRefreshToken() {
+    return SecureStore.getItemAsync(REFRESH_KEY);
+  },
+  async saveTokens(accessToken, refreshToken) {
+    await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
+    await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
+  },
+  async clearTokens() {
+    await remove(ACCESS_KEY);
+    await remove(REFRESH_KEY);
+  },
+};

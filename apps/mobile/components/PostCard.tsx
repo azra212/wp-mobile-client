@@ -1,5 +1,5 @@
-import React from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 type PostCardProps = {
   title: string;
@@ -8,55 +8,54 @@ type PostCardProps = {
   onPress: () => void;
 };
 
-const PostCard = ({ title, excerpt, image, onPress }: PostCardProps) => {
+export default function PostCard({ title, excerpt, image, onPress }: PostCardProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [
-        {
-          backgroundColor: "#fff",
-          padding: 16,
-          borderRadius: 8,
-          marginBottom: 12,
-          borderWidth: 1,
-          borderColor: "#eee",
-          opacity: pressed ? 0.85 : 1,
-        },
-      ]}
+      style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >
-      <View style={{ gap: 10 }}>
-        {image && (
-          <Image
-            source={{ uri: image }}
-            style={{ width: "100%", height: 180 }}
-            resizeMode="cover"
-          />
-        )}
-        <View>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: "600",
-              marginBottom: 6,
-              color: "#111",
-            }}
-          >
-            {title}
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              lineHeight: 20,
-              color: "#555",
-            }}
-            numberOfLines={3}
-          >
-            {excerpt}
-          </Text>
-        </View>
+      {image ? (
+        <Image source={{ uri: image }} style={styles.image} resizeMode="cover" />
+      ) : null}
+      <View style={styles.copy}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.excerpt} numberOfLines={3}>
+          {excerpt}
+        </Text>
       </View>
     </Pressable>
   );
-};
+}
 
-export default PostCard;
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: theme.color.surface,
+    borderRadius: theme.radius,
+    borderWidth: 1,
+    borderColor: theme.color.border,
+    marginBottom: theme.space.sm,
+    overflow: "hidden",
+  },
+  pressed: {
+    opacity: 0.85,
+  },
+  image: {
+    width: "100%",
+    height: 180,
+    backgroundColor: theme.color.border,
+  },
+  copy: {
+    padding: theme.space.md,
+    gap: theme.space.xs,
+  },
+  title: {
+    fontSize: theme.font.body,
+    fontWeight: "600",
+    color: theme.color.text,
+  },
+  excerpt: {
+    fontSize: theme.font.small,
+    lineHeight: 20,
+    color: theme.color.muted,
+  },
+});
