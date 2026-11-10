@@ -27,9 +27,11 @@ flowchart TB
   Plugin --> Secret
 ```
 
-Login returns an access token (15 minutes) and a refresh token (30 days). The app keeps both in `expo-secure-store`. When a signed request gets a 401, the client exchanges the refresh token once and retries. If that fails, it deletes the tokens and returns to the sign-in screen.
+The plugin is the auth boundary: health, login, refresh, and the current user. Published posts stay on the core WordPress REST API (`/wp/v2/posts`). A later write, such as saving a draft, belongs on the plugin with a capability check, not on a core route.
 
-Posts come from the normal WordPress REST API. Login, refresh, profile, and health come from the plugin. Failures use the WordPress REST error shape: `code`, `message`, and `data.status`.
+Login returns an access token (15 minutes) and a refresh token (30 days). The app keeps both in `expo-secure-store`. A 401 triggers one refresh and a retry. If that refresh is rejected, the app deletes both tokens and returns to sign-in. Logout does the same on the device. The server does not revoke a refresh token; it stays valid until it expires.
+
+Failures use the WordPress REST error shape: `code`, `message`, and `data.status`.
 
 ## Screenshots
 
